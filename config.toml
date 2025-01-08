@@ -1,0 +1,6 @@
+[api]
+gemini = ""
+
+[languages]
+lang_to = "eng" # Currently unused, always default to English
+lang_from = "en+ja" # Supported languages from https://www.jaided.ai/easyocr/ and seperated by a +
