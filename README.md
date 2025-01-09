@@ -5,7 +5,7 @@ The application works by periodically taking a screenshot using **Spectacle**, d
 
 ## Requirements
 
-- **Spectacle**: For taking periodic screenshots.
+- **Spectacle**: For taking periodic screenshots. Screenshots are saved as `screenshot.jpg` at `/tmp`.
 - **EasyOCR**: For detecting text in images.
 - **Gemini API**: For translating detected text.
 
