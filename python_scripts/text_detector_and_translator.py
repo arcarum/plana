@@ -1,7 +1,8 @@
 import easyocr
 import google.generativeai as genai
 import logging
-import re
+import json
+import typing_extensions as typing
 
 # ANSI color codes
 # To be consistent with Rust log output
@@ -19,6 +20,11 @@ log_format = (
 
 logging.basicConfig(level=logging.INFO, format=log_format, datefmt="%Y-%m-%dT%H:%M:%SZ")
 LOGGER = logging.getLogger(__name__)
+
+# The structured output for Gemini
+class TranslatedTextBBox(typing.TypedDict):
+    text: str
+    bbox: list[(int, int, int, int)]
 
 class TextDetectorAndTranslator:
     def __init__(self, lang: str, api_key: str):
@@ -68,25 +74,27 @@ class TextDetectorAndTranslator:
         """ + "\n".join([f'("{text}", {bbox})' for text, bbox in detected_texts])
 
         LOGGER.info("Sent the prompt to GEMINI. Waiting for a response...")
-        response = self.model.generate_content(prompt)
+        response = self.model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json", response_schema=list[TranslatedTextBBox]
+            ),
+        )
         LOGGER.info("Response received.")
+
+        # Load the data in the expected format
+        response_data = json.loads(response.text)
+        result = []
+        for item in response_data:
+            text = item["text"]
+            bbox = item["bbox"]
+            
+            bbox_int = tuple(map(int, bbox))
+            result.append((text, bbox_int))
         
-        return self.parse_translated_response(response.text)
+        return result
     
     def detect_and_translate(self, image: str):
         detected_texts = self.detect_text(image)
         translated_texts = self.translate(detected_texts)
         return translated_texts
-    
-    def parse_translated_response(self, response: str):
-        
-        # Regular expression to match the format ("text", (x, y, w, h))
-        pattern = r'\("([^"]+)", \((\d+), (\d+), (\d+), (\d+)\)\)'
-        
-        # Use findall to extract all matches
-        matches = re.findall(pattern, response)
-        
-        # Convert the matches into the desired list of tuples
-        result = [(text, (int(x), int(y), int(w), int(h))) for text, x, y, w, h in matches]
-
-        return result

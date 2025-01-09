@@ -1,6 +1,6 @@
 use std::time::Instant;
 use eframe::egui::{self};
-use log::info;
+use log::{error, info};
 use crate::detection::Detection;
 use crate::screenshot;
 
@@ -35,7 +35,7 @@ impl Overlay {
                     info!("Screenshot saved to: {}", output);
                     self.sentences = self.detection.process_image(&self.lang, &output).unwrap_or_default();
                 }
-                Err(e) => eprintln!("Error capturing screenshot: {}", e),
+                Err(e) => error!("Error capturing screenshot: {}", e),
             }
             
             self.last_update = Instant::now(); // Reset last update time to the current time
