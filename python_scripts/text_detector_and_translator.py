@@ -24,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 # The structured output for Gemini
 class TranslatedTextBBox(typing.TypedDict):
     text: str
-    bbox: list[(int, int, int, int)]
+    index: int
 
 class TextDetectorAndTranslator:
     def __init__(self, lang: str, api_key: str):
@@ -68,10 +68,10 @@ class TextDetectorAndTranslator:
     def translate(self, detected_texts, lang_to="English"):
 
         prompt = f"""
-        You are a professional translator for video games. 
+        You are an expert translator. 
         Translate the text below to {lang_to}, 
         return everything in the same order and do not add anything else or change the numbers:\n
-        """ + "\n".join([f'("{text}", {bbox})' for text, bbox in detected_texts])
+        """ + "\n".join([f'{index}. "{text}")' for index, (text, bbox) in enumerate(detected_texts)])
 
         LOGGER.info("Sent the prompt to GEMINI. Waiting for a response...")
         response = self.model.generate_content(
@@ -85,12 +85,10 @@ class TextDetectorAndTranslator:
         # Load the data in the expected format
         response_data = json.loads(response.text)
         result = []
-        for item in response_data:
+        for item, (untranslated_text, bbox) in zip(response_data, detected_texts):
             text = item["text"]
-            bbox = item["bbox"]
             
-            bbox_int = tuple(map(int, bbox))
-            result.append((text, bbox_int))
+            result.append((text, bbox))
         
         return result
     
