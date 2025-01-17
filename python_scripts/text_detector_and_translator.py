@@ -31,6 +31,7 @@ class TextDetectorAndTranslator:
     def __init__(self, lang: str, api_key: str):
 
         self.prev_detected_texts = None
+        self.prev_translated_texts = None
 
         LOGGER.info("Initializing EasyOCR reader and GEMINI model...")
 
@@ -87,12 +88,14 @@ class TextDetectorAndTranslator:
             return []
 
         # Comparing bbox instead of text to be able to save the translated text in self.prev_detected_texts
-        prev_texts = [bbox for _, bbox in self.prev_detected_texts] if self.prev_detected_texts else []
-        new_texts = [bbox for _, bbox in detected_texts]
+        prev_texts = [text for text, _ in self.prev_detected_texts] if self.prev_detected_texts else []
+        new_texts = [text for text, _ in detected_texts]
         
         if prev_texts == new_texts:
             LOGGER.info("Detected text is unchanged. No prompt sent.")
-            return self.prev_detected_texts
+            return self.prev_translated_texts
+        
+        self.prev_detected_texts = detected_texts
 
         prompt = f"""
         You are an expert translator for video games. 
@@ -119,7 +122,7 @@ class TextDetectorAndTranslator:
             result.append((text, bbox))
         
         # Update previously detected texts
-        self.prev_detected_texts = result
+        self.prev_translated_texts = result
 
         return result
     
