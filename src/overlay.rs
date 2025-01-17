@@ -80,12 +80,15 @@ impl eframe::App for Overlay {
                 egui::Color32::from_black_alpha(200),
             );
 
+            let margin_factor = 0.5;
+            let font_size = bounding_box.height() * margin_factor;
+
             // Render the sentence text 
             ctx.layer_painter(layer_id).text(
-                bounding_box.center(),
-                egui::Align2::CENTER_CENTER,
+                bounding_box.left_center(),
+                egui::Align2::LEFT_CENTER,
                 sentence,
-                egui::TextStyle::Body.resolve(&ctx.style()),
+                egui::FontId { size: font_size.round(), family: egui::FontFamily::Proportional },
                 egui::Color32::WHITE,
             );
         }
