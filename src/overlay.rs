@@ -1,5 +1,5 @@
 use std::time::Instant;
-use eframe::egui::{self};
+use eframe::egui::{self, Align2, Color32, FontId, Pos2};
 use log::{error, info};
 use crate::detection::Detection;
 use crate::screenshot;
@@ -80,17 +80,32 @@ impl eframe::App for Overlay {
                 egui::Color32::from_black_alpha(200),
             );
 
-            let margin_factor = 0.5;
-            let font_size = bounding_box.height() * margin_factor;
-
-            // Render the sentence text 
-            ctx.layer_painter(layer_id).text(
-                bounding_box.left_center(),
-                egui::Align2::LEFT_CENTER,
-                sentence,
-                egui::FontId { size: font_size.round(), family: egui::FontFamily::Proportional },
-                egui::Color32::WHITE,
+            let layout = ctx.layer_painter(layer_id).layout(
+                sentence.to_string(), 
+                egui::TextStyle::Body.resolve(&ctx.style()),
+                egui::Color32::WHITE, 
+                bounding_box.width()
             );
+
+            // Calculate the starting vertical position to center the text in the box
+            let total_height = layout.mesh_bounds.height();
+            let vertical_offset = (bounding_box.height() - total_height) / 2.0; // Center vertically in the bounding box
+            let mut current_y = bounding_box.top() + vertical_offset; // Start from the top with the vertical offset
+            
+            for row in layout.rows.iter() {
+                let adjusted_font_size = egui::TextStyle::Body.resolve(&ctx.style()).size - (layout.rows.len() as f32 * 0.5);
+            
+                // Render the current row of text
+                ctx.layer_painter(layer_id).text(
+                    Pos2::new(bounding_box.left(), current_y),
+                    Align2::LEFT_TOP,
+                    &row.text(),
+                    FontId { size: adjusted_font_size, family: egui::FontFamily::Proportional },
+                    Color32::WHITE,
+                );
+            
+                current_y += row.height();
+            }
         }
 
         ctx.request_repaint(); // Needed to force the app to continuously update

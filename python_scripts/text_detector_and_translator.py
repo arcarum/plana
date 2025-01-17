@@ -47,7 +47,7 @@ class TextDetectorAndTranslator:
         LOGGER.info("Detecting text...")
         
         # Detect texts from the image
-        result = self.reader.readtext(image, text_threshold=0.5)
+        result = self.reader.readtext(image, text_threshold=0.5, paragraph=True, width_ths=0, y_ths=0.01, x_ths=0)
         
         if not result:
             LOGGER.info("No text detected.")
@@ -59,15 +59,13 @@ class TextDetectorAndTranslator:
             text = detection[1]  # Detected text
             bbox = detection[0]  # EasyOCR bounding boxes -> [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
 
-            # Ignore only numbers
-            if text.isdigit():
+            if re.match("^[A-Za-z0-9]+$", text):  # Alphanumeric text without separators
                 continue
-            elif re.match("^[A-Za-z0-9]+$", text):  # Alphanumeric text without separators
+            elif re.match(r"^\d", text):  # Exclude strings that start with a number
                 continue
-            # Exclude strings with special characters between alphanumeric parts (e.g., "abc:123" or "abc-abc")
-            elif re.search(r"[A-Za-z0-9]+[^\w\s]+[A-Za-z0-9]+", text):
+            elif re.match(r"^[A-Za-z].*[A-Za-z]$", text):  # Exclude strings starting and ending with a letter
                 continue
-            elif re.search(r"\d+[A-Za-z]+|[A-Za-z]+\d+", text):  # This matches any number followed by letters or vice versa
+            elif re.match(r"^[^\w\s]+$", text):  # Exclude strings with only special characters
                 continue
             
             # Extracting the top-left corner (x1, y1) and bottom-right corner (x3, y3)
@@ -97,8 +95,9 @@ class TextDetectorAndTranslator:
             return self.prev_detected_texts
 
         prompt = f"""
-        You are an expert translator. 
+        You are an expert translator for video games. 
         Translate the text below to {lang_to}, 
+        Ensure that the translation maintains the original meaning and structure. Do not perform transliteration.
         return everything in the same order and do not add anything else or change the numbers:\n
         """ + "\n".join([f'{index}. "{text}")' for index, (text, bbox) in enumerate(detected_texts)])
 
