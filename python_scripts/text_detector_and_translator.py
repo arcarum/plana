@@ -2,6 +2,7 @@ import easyocr
 import google.generativeai as genai
 import logging
 import json
+import re
 import typing_extensions as typing
 
 # ANSI color codes
@@ -29,6 +30,8 @@ class TranslatedTextBBox(typing.TypedDict):
 class TextDetectorAndTranslator:
     def __init__(self, lang: str, api_key: str):
 
+        self.prev_detected_texts = None
+
         LOGGER.info("Initializing EasyOCR reader and GEMINI model...")
 
         # Initialize EasyOCR reader
@@ -44,13 +47,28 @@ class TextDetectorAndTranslator:
         LOGGER.info("Detecting text...")
         
         # Detect texts from the image
-        result = self.reader.readtext(image, text_threshold=0.4)
+        result = self.reader.readtext(image, text_threshold=0.5)
+        
+        if not result:
+            LOGGER.info("No text detected.")
+            return []
         
         # Extract detected texts with bounding boxes
         detected_texts = []
         for detection in result:
             text = detection[1]  # Detected text
             bbox = detection[0]  # EasyOCR bounding boxes -> [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+
+            # Ignore only numbers
+            if text.isdigit():
+                continue
+            elif re.match("^[A-Za-z0-9]+$", text):  # Alphanumeric text without separators
+                continue
+            # Exclude strings with special characters between alphanumeric parts (e.g., "abc:123" or "abc-abc")
+            elif re.search(r"[A-Za-z0-9]+[^\w\s]+[A-Za-z0-9]+", text):
+                continue
+            elif re.search(r"\d+[A-Za-z]+|[A-Za-z]+\d+", text):  # This matches any number followed by letters or vice versa
+                continue
             
             # Extracting the top-left corner (x1, y1) and bottom-right corner (x3, y3)
             top_left = bbox[0]
@@ -66,6 +84,17 @@ class TextDetectorAndTranslator:
         return detected_texts
 
     def translate(self, detected_texts, lang_to="English"):
+
+        if not detected_texts:
+            return []
+
+        # Comparing bbox instead of text to be able to save the translated text in self.prev_detected_texts
+        prev_texts = [bbox for _, bbox in self.prev_detected_texts] if self.prev_detected_texts else []
+        new_texts = [bbox for _, bbox in detected_texts]
+        
+        if prev_texts == new_texts:
+            LOGGER.info("Detected text is unchanged. No prompt sent.")
+            return self.prev_detected_texts
 
         prompt = f"""
         You are an expert translator. 
@@ -85,11 +114,14 @@ class TextDetectorAndTranslator:
         # Load the data in the expected format
         response_data = json.loads(response.text)
         result = []
-        for item, (untranslated_text, bbox) in zip(response_data, detected_texts):
+        for item, (_, bbox) in zip(response_data, detected_texts):
             text = item["text"]
             
             result.append((text, bbox))
         
+        # Update previously detected texts
+        self.prev_detected_texts = result
+
         return result
     
     def detect_and_translate(self, image: str):
