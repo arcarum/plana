@@ -91,11 +91,11 @@ impl eframe::App for Overlay {
             let total_height = layout.mesh_bounds.height();
             let vertical_offset = (bounding_box.height() - total_height) / 2.0; // Center vertically in the bounding box
             let mut current_y = bounding_box.top() + vertical_offset; // Start from the top with the vertical offset
+
+            let adjusted_font_size = egui::TextStyle::Body.resolve(&ctx.style()).size - (layout.rows.len() as f32 - 1.0);
             
+            // Render the translated text
             for row in layout.rows.iter() {
-                let adjusted_font_size = egui::TextStyle::Body.resolve(&ctx.style()).size - (layout.rows.len() as f32 * 0.5);
-            
-                // Render the current row of text
                 ctx.layer_painter(layer_id).text(
                     Pos2::new(bounding_box.left(), current_y),
                     Align2::LEFT_TOP,

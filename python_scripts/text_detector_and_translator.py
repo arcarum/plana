@@ -48,7 +48,7 @@ class TextDetectorAndTranslator:
         LOGGER.info("Detecting text...")
         
         # Detect texts from the image
-        result = self.reader.readtext(image, text_threshold=0.5, paragraph=True, width_ths=0, y_ths=0.01, x_ths=0)
+        result = self.reader.readtext(image, text_threshold=0.5, paragraph=True, height_ths=1.0, width_ths=1.0, ycenter_ths=0.01, y_ths=0.01, x_ths=0.01)
         
         if not result:
             LOGGER.info("No text detected.")
@@ -87,7 +87,7 @@ class TextDetectorAndTranslator:
         if not detected_texts:
             return []
 
-        # Comparing bbox instead of text to be able to save the translated text in self.prev_detected_texts
+        # Comparing text to avoid sending a prompt if nothing changed on the screen
         prev_texts = [text for text, _ in self.prev_detected_texts] if self.prev_detected_texts else []
         new_texts = [text for text, _ in detected_texts]
         
@@ -98,10 +98,10 @@ class TextDetectorAndTranslator:
         self.prev_detected_texts = detected_texts
 
         prompt = f"""
-        You are an expert translator for video games. 
-        Translate the text below to {lang_to}, 
-        Ensure that the translation maintains the original meaning and structure. Do not perform transliteration.
-        return everything in the same order and do not add anything else or change the numbers:\n
+        You are an expert translator. 
+        Translate the text below to {lang_to}.
+        Do not perform transliteration.
+        Return everything in the same order and do not add anything else or change the numbers:\n
         """ + "\n".join([f'{index}. "{text}")' for index, (text, bbox) in enumerate(detected_texts)])
 
         LOGGER.info("Sent the prompt to GEMINI. Waiting for a response...")
