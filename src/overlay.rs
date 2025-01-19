@@ -82,7 +82,7 @@ impl eframe::App for Overlay {
 
             let layout = ctx.layer_painter(layer_id).layout(
                 sentence.to_string(), 
-                egui::TextStyle::Body.resolve(&ctx.style()),
+                FontId { size: egui::TextStyle::Body.resolve(&ctx.style()).size + 1.0, family: egui::FontFamily::Proportional },
                 egui::Color32::WHITE, 
                 bounding_box.width()
             );
@@ -92,7 +92,7 @@ impl eframe::App for Overlay {
             let vertical_offset = (bounding_box.height() - total_height) / 2.0; // Center vertically in the bounding box
             let mut current_y = bounding_box.top() + vertical_offset; // Start from the top with the vertical offset
 
-            let adjusted_font_size = egui::TextStyle::Body.resolve(&ctx.style()).size - (layout.rows.len() as f32 - 1.0);
+            let adjusted_font_size = egui::TextStyle::Body.resolve(&ctx.style()).size + 1.0 - (layout.rows.len() as f32 - 1.0);
             
             // Render the translated text
             for row in layout.rows.iter() {
