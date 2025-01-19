@@ -57,20 +57,22 @@ impl eframe::App for Overlay {
         // Call the method to update the screenshot every second
         self.update_screenshot();
 
+        let identifier = "Overlay Text";
+        let layer_id = egui::LayerId::new(egui::Order::Foreground, egui::Id::new(identifier));
+
+        let font_size = egui::TextStyle::Body.resolve(&ctx.style()).size + 1.0;
+
         // Iterate through the sentences and their bounding boxes
-        for (sentence, (min_x, min_y, max_w, max_h)) in self.sentences.iter() {
+        for (sentence, (min_x, min_y, max_x, max_y)) in self.sentences.iter() {
 
             if sentence.is_empty() {
                 continue;
             }
 
-            let identifier = "Overlay Text";
-            let layer_id = egui::LayerId::new(egui::Order::Foreground, egui::Id::new(identifier));
-
             // Create a bounding box from (x, y, w, h)
             let bounding_box: egui::Rect = egui::Rect::from_min_max(
                 egui::Pos2::new(*min_x as f32, *min_y as f32),
-                egui::Pos2::new(*max_w as f32 + *min_x as f32, *max_h as f32 + *min_y as f32),
+                egui::Pos2::new(*max_x as f32, *max_y as f32),
             );
 
             // Paint the inside of the bounding box black
@@ -82,7 +84,7 @@ impl eframe::App for Overlay {
 
             let layout = ctx.layer_painter(layer_id).layout(
                 sentence.to_string(), 
-                FontId { size: egui::TextStyle::Body.resolve(&ctx.style()).size + 1.0, family: egui::FontFamily::Proportional },
+                FontId { size: font_size, family: egui::FontFamily::Proportional },
                 egui::Color32::WHITE, 
                 bounding_box.width()
             );
@@ -92,7 +94,8 @@ impl eframe::App for Overlay {
             let vertical_offset = (bounding_box.height() - total_height) / 2.0; // Center vertically in the bounding box
             let mut current_y = bounding_box.top() + vertical_offset; // Start from the top with the vertical offset
 
-            let adjusted_font_size = egui::TextStyle::Body.resolve(&ctx.style()).size + 1.0 - (layout.rows.len() as f32 - 1.0);
+            // Reduce font size based on number of rows
+            let adjusted_font_size = font_size - (layout.rows.len() as f32 - 1.0);
             
             // Render the translated text
             for row in layout.rows.iter() {

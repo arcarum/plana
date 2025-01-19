@@ -42,13 +42,20 @@ class TextDetectorAndTranslator:
         # Initialize GEMINI model
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel("gemini-1.5-flash")
+
+        # Precompile regex for better performance
+        # Use regex to ignore some sentences from the OCR
+        self.pattern1 = re.compile("^[A-Za-z0-9]+$") # Matches alphanumeric text without separators
+        self.pattern2 = re.compile(r"^\d") # Matches strings that start with a digit
+        self.pattern3 = re.compile(r"^[A-Za-z].*[A-Za-z]$") # Matches strings starting and ending with an English letter
+        self.pattern4 = re.compile(r"^[^\w\s]+$") # Matches strings with only special characters
         
     def detect_text(self, image: str):
         
         LOGGER.info("Detecting text...")
         
         # Detect texts from the image
-        result = self.reader.readtext(image, text_threshold=0.5, paragraph=True, height_ths=1.0, width_ths=1.0, ycenter_ths=0.01, y_ths=0.01, x_ths=0.01)
+        result = self.reader.readtext(image, paragraph=True, height_ths=1.0, width_ths=1.0, ycenter_ths=0.01, y_ths=0.05, x_ths=0.1)
         
         if not result:
             LOGGER.info("No text detected.")
@@ -60,25 +67,25 @@ class TextDetectorAndTranslator:
             text = detection[1]  # Detected text
             bbox = detection[0]  # EasyOCR bounding boxes -> [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
 
-            if re.match("^[A-Za-z0-9]+$", text):  # Alphanumeric text without separators
-                continue
-            elif re.match(r"^\d", text):  # Exclude strings that start with a number
-                continue
-            elif re.match(r"^[A-Za-z].*[A-Za-z]$", text):  # Exclude strings starting and ending with a letter
-                continue
-            elif re.match(r"^[^\w\s]+$", text):  # Exclude strings with only special characters
+            # Use regex to ignore some sentences from the OCR
+            if (
+                self.pattern1.match(text.strip()) or
+                self.pattern2.match(text.strip()) or
+                self.pattern3.match(text.strip()) or
+                self.pattern4.match(text.strip())
+            ):
                 continue
             
             # Extracting the top-left corner (x1, y1) and bottom-right corner (x3, y3)
             top_left = bbox[0]
             bottom_right = bbox[2]
             
-            x = int(top_left[0])
-            y = int(top_left[1])
-            w = int(abs(bottom_right[0] - top_left[0]))  # width of the bounding box
-            h = int(abs(bottom_right[1] - top_left[1]))  # height of the bounding box
+            top_left_x = int(top_left[0])
+            top_left_y = int(top_left[1])
+            bottom_right_x = int(bottom_right[0])  # width of the bounding box
+            bottom_right_y = int(bottom_right[1])  # height of the bounding box
             
-            detected_texts.append((text, (x, y, w, h)))
+            detected_texts.append((text, (top_left_x, top_left_y, bottom_right_x, bottom_right_y)))
 
         return detected_texts
 
