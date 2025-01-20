@@ -7,7 +7,7 @@ The application works by periodically taking a screenshot using **Spectacle**, d
 
 - **Spectacle**: For taking periodic screenshots. Screenshots are saved as `screenshot.jpg` at `/tmp`.
 - **EasyOCR**: For detecting text in images.
-- **Gemini API and google-generativeai package**: For translating detected text.
+- **Gemini API key and google-generativeai package**: For translating detected text.
 
 ## How to Run
 
