@@ -10,16 +10,10 @@ pub fn capture_screenshot(output_directory: &str) -> Result<String> {
         .arg("-a") // active window
         .arg("-o") // output to
         .arg(&output_file)
-        .status();
+        .status()?;
 
-    match status {
-        Ok(exit_status) => {
-            if exit_status.success() {
-                Ok(output_file)
-            } else {
-                Err(std::io::Error::new(std::io::ErrorKind::Other, "Spectacle command failed"))
-            }
-        }
-        Err(e) => Err(e),
+    match status.success() {
+        true => Ok(output_file),
+        false => Err(std::io::Error::new(std::io::ErrorKind::Other, "Spectacle command failed")),
     }
 }

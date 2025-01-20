@@ -1,5 +1,7 @@
 use pyo3::{types::{PyAnyMethods, PyModule}, IntoPyObject, PyObject, PyResult, Python};
 
+use crate::overlay::BoundingBox;
+
 pub struct Detection {
     api_key: String,
     py_class_instance: Option<PyObject>,
@@ -14,7 +16,7 @@ impl Detection {
         }
     }
 
-    pub fn process_image(&mut self, lang: &str, image_path: &str) -> PyResult<Vec<(String, (u32, u32, u32, u32))>> {
+    pub fn process_image(&mut self, lang: &str, image_path: &str) -> PyResult<Vec<(String, BoundingBox)>> {
 
         pyo3::prepare_freethreaded_python();
         Python::with_gil(|py| {
@@ -34,7 +36,7 @@ impl Detection {
             let py_class_instance = self.py_class_instance.as_ref().unwrap();
 
             // Call the 'detect_and_translate' method on the instance
-            let result: Vec<(String, (u32, u32, u32, u32))> = py_class_instance
+            let result: Vec<(String, BoundingBox)> = py_class_instance
                 .getattr(py, "detect_and_translate")?
                 .call1(py, (image_path,))?
                 .extract(py)?;

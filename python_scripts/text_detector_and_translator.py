@@ -41,21 +41,31 @@ class TextDetectorAndTranslator:
 
         # Initialize GEMINI model
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-1.5-flash")
+        self.model = genai.GenerativeModel("gemini-1.5-flash-002")
 
         # Precompile regex for better performance
         # Use regex to ignore some sentences from the OCR
-        self.pattern1 = re.compile("^[A-Za-z0-9]+$") # Matches alphanumeric text without separators
+        self.pattern1 = re.compile(r"^[A-Za-z\s\d\.]+$") # Matches alphanumeric text with spaces or periods
         self.pattern2 = re.compile(r"^\d") # Matches strings that start with a digit
-        self.pattern3 = re.compile(r"^[A-Za-z].*[A-Za-z]$") # Matches strings starting and ending with an English letter
+        self.pattern3 = re.compile(r"^[A-Za-z0-9].*[A-Za-z0-9]$") # Matches strings that start and end with an alphanumeric character.
         self.pattern4 = re.compile(r"^[^\w\s]+$") # Matches strings with only special characters
         
-    def detect_text(self, image: str):
+    def detect_text(self, image: str, decoder='beamsearch'):
         
         LOGGER.info("Detecting text...")
         
         # Detect texts from the image
-        result = self.reader.readtext(image, paragraph=True, height_ths=1.0, width_ths=1.0, ycenter_ths=0.01, y_ths=0.05, x_ths=0.1)
+        result = self.reader.readtext(
+            image, 
+            decoder,
+            paragraph=True, 
+            link_threshold=0.6,
+            text_threshold=0.8, 
+            height_ths=1.0, 
+            width_ths=1.0, 
+            y_ths=0.07, 
+            x_ths=0.3
+        )
         
         if not result:
             LOGGER.info("No text detected.")
@@ -122,11 +132,7 @@ class TextDetectorAndTranslator:
 
         # Load the data in the expected format
         response_data = json.loads(response.text)
-        result = []
-        for item, (_, bbox) in zip(response_data, detected_texts):
-            text = item["text"]
-            
-            result.append((text, bbox))
+        result = [(item["text"], bbox) for item, (_, bbox) in zip(response_data, detected_texts)]
         
         # Update previously detected texts
         self.prev_translated_texts = result

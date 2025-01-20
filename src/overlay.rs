@@ -4,17 +4,19 @@ use log::{error, info};
 use crate::detection::Detection;
 use crate::screenshot;
 
+pub type BoundingBox = (f32, f32, f32, f32);
+
 pub struct Overlay {
     detection: Detection,
     lang: String,
-    sentences: Vec<(String, (u32, u32, u32, u32))>, // Store sentences and their bounding boxes
+    sentences: Vec<(String, BoundingBox)>, // Store sentences and their bounding boxes
     last_update: Instant, // Track time of the last screenshot update
 }
 
 impl Overlay {
 
     // cc is unused for now but can be used to load the fonts for non-latin characters
-    pub fn new(_cc: &eframe::CreationContext<'_>, api_key: String, lang: String, sentences: Vec<(String, (u32, u32, u32, u32))>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext<'_>, api_key: String, lang: String, sentences: Vec<(String, BoundingBox)>) -> Self {
 
         Overlay {
             detection: Detection::new(api_key),
@@ -29,19 +31,21 @@ impl Overlay {
 
         let output_directory = "/tmp";
         
-        if self.last_update.elapsed().as_secs() >= 1 {
-            match screenshot::capture_screenshot(output_directory) {
-                Ok(output) => {
-                    info!("Screenshot saved to: {}", output);
-                    self.sentences = self.detection.process_image(&self.lang, &output).unwrap_or_default();
-                }
-                Err(e) => error!("Error capturing screenshot: {}", e),
-            }
-            
-            self.last_update = Instant::now(); // Reset last update time to the current time
-
-            info!("Updating overlay text!"); // Log is here since the update function runs 60 times per second
+        if self.last_update.elapsed().as_secs() < 1 {
+            return;
         }
+
+        match screenshot::capture_screenshot(output_directory) {
+            Ok(output) => {
+                info!("Screenshot saved to: {}", output);
+                self.sentences = self.detection.process_image(&self.lang, &output).unwrap_or_default();
+            }
+            Err(e) => error!("Error capturing screenshot: {}", e),
+        }
+        
+        self.last_update = Instant::now(); // Reset last update time to the current time
+
+        info!("Updating overlay text!"); // Log is here since the update function runs 60 times per second
     }
 }
 
@@ -60,8 +64,6 @@ impl eframe::App for Overlay {
         let identifier = "Overlay Text";
         let layer_id = egui::LayerId::new(egui::Order::Foreground, egui::Id::new(identifier));
 
-        let font_size = egui::TextStyle::Body.resolve(&ctx.style()).size + 1.0;
-
         // Iterate through the sentences and their bounding boxes
         for (sentence, (min_x, min_y, max_x, max_y)) in self.sentences.iter() {
 
@@ -69,10 +71,10 @@ impl eframe::App for Overlay {
                 continue;
             }
 
-            // Create a bounding box from (x, y, w, h)
+            // Create a bounding box
             let bounding_box: egui::Rect = egui::Rect::from_min_max(
-                egui::Pos2::new(*min_x as f32, *min_y as f32),
-                egui::Pos2::new(*max_x as f32, *max_y as f32),
+                egui::Pos2::new(*min_x, *min_y),
+                egui::Pos2::new(*max_x, *max_y),
             );
 
             // Paint the inside of the bounding box black
@@ -81,6 +83,8 @@ impl eframe::App for Overlay {
                 0.0,
                 egui::Color32::from_black_alpha(200),
             );
+
+            let font_size = egui::TextStyle::Body.resolve(&ctx.style()).size + (bounding_box.height() * 0.1);
 
             let layout = ctx.layer_painter(layer_id).layout(
                 sentence.to_string(), 
@@ -95,14 +99,14 @@ impl eframe::App for Overlay {
             let mut current_y = bounding_box.top() + vertical_offset; // Start from the top with the vertical offset
 
             // Reduce font size based on number of rows
-            let adjusted_font_size = font_size - (layout.rows.len() as f32 - 1.0);
+            let adjusted_font_size = font_size - (layout.rows.len() as f32);
             
             // Render the translated text
             for row in layout.rows.iter() {
                 ctx.layer_painter(layer_id).text(
                     Pos2::new(bounding_box.left(), current_y),
                     Align2::LEFT_TOP,
-                    &row.text(),
+                    row.text(),
                     FontId { size: adjusted_font_size, family: egui::FontFamily::Proportional },
                     Color32::WHITE,
                 );
