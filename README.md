@@ -7,11 +7,11 @@ The application works by periodically taking a screenshot using **Spectacle**, d
 
 - **Spectacle**: For taking periodic screenshots. Screenshots are saved as `screenshot.jpg` at `/tmp`.
 - **EasyOCR**: For detecting text in images.
-- **Gemini API**: For translating detected text.
+- **Gemini API and google-generativeai package**: For translating detected text.
 
 ## How to Run
 
-1. Install [EasyOCR](https://github.com/JaidedAI/EasyOCR).
+1. Install [EasyOCR](https://github.com/JaidedAI/EasyOCR) and [google-generativeai package](https://pypi.org/project/google-generativeai/).
 
 2. Install **Spectacle** for taking screenshots. On **Arch Linux**, you can install it using:
 
